@@ -2,6 +2,11 @@ using UnityEngine;
 
 public class KaldirimSistemi : MonoBehaviour
 {
+
+    [Header("El (Model) Ayarları")]
+    public Transform elPozisyonu; // Karakterin sağ alt köşesindeki boş obje
+    private GameObject eldekiModel; // O an elimizde tuttuğumuz taşın kopyası
+
     [Header("Kare Prefabları")]
     public GameObject TamKarePrefab;
     public GameObject CeyrekKarePrefab;
@@ -10,14 +15,10 @@ public class KaldirimSistemi : MonoBehaviour
     public float YerlestirmeMenzili = 8.0f;
     public float DonmeHassasiyeti = 15f;
     public int MaxKatSayisi = 6;
-    public float GridBoyutu = 1.0f;
+    public float HareketYumusatma = 35f;
 
     [Range(0.3f, 0.7f)]
-    [Tooltip("Mıknatıslanma gücü. Taşlar zor yapışıyorsa 0.50f - 0.60f yapabilirsin.")]
     public float MiknatisEsigi = 0.55f;
-
-    [Header("Görsel Yumuşatma")]
-    public float HareketYumusatma = 35f;
 
     private KareEnvanteri envanter;
     private HayaletYonetici hayalet;
@@ -32,81 +33,74 @@ public class KaldirimSistemi : MonoBehaviour
 
     void Start()
     {
-        hayalet.HayaletiGuncelle(TamKarePrefab);
         hayalet.HayaletiGoster(false);
     }
 
     void Update()
     {
-        Ray ray = Camera.main.ScreenPointToRay(new Vector3(Screen.width / 2, Screen.height / 2, 0));
-        RaycastHit hit;
 
-        if (Physics.Raycast(ray, out hit, YerlestirmeMenzili))
+        Ray ray = Camera.main.ScreenPointToRay(new Vector3(Screen.width / 2, Screen.height / 2, 0));
+
+        // ELDEKİ MODELİ GÜNCELLE
+        EldekiModeliGuncelle();
+
+        if (Physics.Raycast(ray, out RaycastHit hit, YerlestirmeMenzili))
         {
-            // KutuKontrol fonksiyonu artık içeride 'secilen' prefabı kontrol ediyor
             if (KutuKontrol(hit)) return;
 
-            // 1. DİNAMİK GRID
-            float adimX = envanter.SuankiKarePrefabi != null ? envanter.SuankiKarePrefabi.transform.localScale.x : 1.0f;
-            float adimZ = envanter.SuankiKarePrefabi != null ? envanter.SuankiKarePrefabi.transform.localScale.z : 1.0f;
-
-            float xGrid = Mathf.Round(hit.point.x / adimX) * adimX;
-            float zGrid = Mathf.Round(hit.point.z / adimZ) * adimZ;
-
-            // 2. MIKNATIS (SuankiMiktar kontrolü eklendi)
-            Vector3 hedefXz = (Input.GetKey(KeyCode.LeftShift) && envanter.SuankiMiktar > 0)
-                ? AgresifSnapHesapla(hit.point)
-                : new Vector3(xGrid, 0, zGrid);
-
-            // 3. YÜKSEKLİK HESABI
-            float kareH = envanter.SuankiKarePrefabi != null ? envanter.SuankiKarePrefabi.transform.localScale.y : 1f;
-            float hedefY = Input.GetKey(KeyCode.LeftShift) ? (kareH / 2.0f) : (ZeminYuksekliginiHesapla(hedefXz, kareH) + (kareH / 2.0f));
-
-            Vector3 finalPos = new Vector3(hedefXz.x, hedefY, hedefXz.z);
-            duzlestirilmisPos = Vector3.Lerp(duzlestirilmisPos, finalPos, Time.deltaTime * HareketYumusatma);
-
-            // 4. YERLEŞTİRİLEBİLİRLİK
-            Quaternion finalRot = DonmeHesapla();
-            bool yerlestirilebilir = YerlestirmeUygunmu(finalPos, finalRot, finalPos.y, kareH);
-
-            // HAYALET GÖSTERİMİ (Miktar kontrolüne bağlandı)
-            bool elindeTasVarmi = envanter.SuankiMiktar > 0;
-            hayalet.HayaletiGoster(elindeTasVarmi);
-
-            if (elindeTasVarmi)
-                hayalet.GorselGuncelle(duzlestirilmisPos, finalRot, envanter.SuankiKarePrefabi.transform.localScale, yerlestirilebilir);
-
-            // 5. SOL TIK: YERLEŞTİRME
-            if (Input.GetMouseButtonDown(0) && yerlestirilebilir && envanter.SuankiMiktar > 0)
+            // 1. BOYUTLARI AL (Dinamik Hizalama İçin)
+            GameObject suankiPrefab = envanter.SuankiKarePrefabi;
+            if (suankiPrefab == null) { hayalet.HayaletiGoster(false); }
+            else
             {
-                Instantiate(envanter.SuankiKarePrefabi, finalPos, finalRot);
-                envanter.KareKullan(); // Bu metod artık aktif slottan 1 azaltıyor
+                Vector3 s = suankiPrefab.transform.localScale;
 
-                // Eğer hala taş varsa hayaleti güncelle, bittiyse gizle
-                if (envanter.SuankiMiktar > 0) hayalet.HayaletiGuncelle(envanter.SuankiKarePrefabi);
-                else hayalet.HayaletiGoster(false);
+                // 2. DİNAMİK GRID (Çeyrek taşları 0.5'e, Tam taşları 1.0'a tam oturtan mantık)
+                float xGrid = Mathf.Floor(hit.point.x / s.x) * s.x + (s.x / 2f);
+                float zGrid = Mathf.Floor(hit.point.z / s.z) * s.z + (s.z / 2f);
+
+                // 3. KONUM HESABI
+                Vector3 hedefXz = (Input.GetKey(KeyCode.LeftShift) && envanter.SuankiMiktar > 0)
+                    ? AgresifSnapHesapla(hit.point) : new Vector3(xGrid, 0, zGrid);
+
+                float hedefY = Input.GetKey(KeyCode.LeftShift)
+                    ? (s.y / 2f) : ZeminYuksekliginiHesapla(hedefXz, s.x, s.z) + (s.y / 2f);
+
+                Vector3 finalPos = new Vector3(hedefXz.x, hedefY, hedefXz.z);
+                duzlestirilmisPos = Vector3.Lerp(duzlestirilmisPos, finalPos, Time.deltaTime * HareketYumusatma);
+
+                // 4. HAYALET VE YERLEŞTİRME
+                Quaternion finalRot = DonmeHesapla();
+                bool yerlestirilebilir = YerlestirmeUygunmu(finalPos, finalRot, finalPos.y, s.y);
+                bool elindeTasVar = envanter.SuankiMiktar > 0;
+
+                hayalet.HayaletiGoster(elindeTasVar);
+                if (elindeTasVar)
+                {
+                    hayalet.GorselGuncelle(duzlestirilmisPos, finalRot, s, yerlestirilebilir);
+
+                    if (Input.GetMouseButtonDown(0) && yerlestirilebilir)
+                    {
+                        Instantiate(suankiPrefab, finalPos, finalRot);
+                        envanter.KareKullan();
+                        if (envanter.SuankiMiktar > 0) hayalet.HayaletiGuncelle(envanter.SuankiKarePrefabi);
+                        else hayalet.HayaletiGoster(false);
+                    }
+                }
             }
 
-            // 6. SAĞ TIK: SİLME VE TOPLAMA
+            // 5. SAĞ TIK: EN ÜSTTEKİ TAŞI SİL VE GERİ AL
             if (Input.GetMouseButtonDown(1) && hit.collider.CompareTag("Tas"))
             {
-                GameObject enUsttekiTas = EnUsttekiTasiBul(hit.collider.transform.position.x, hit.collider.transform.position.z);
-
-                if (enUsttekiTas != null)
+                GameObject enUst = EnUsttekiTasiBul(hit.collider.transform.position.x, hit.collider.transform.position.z);
+                if (enUst != null)
                 {
-                    string objName = enUsttekiTas.name.ToLower();
-                    GameObject geriGelen = objName.Contains("ceyrek") ? CeyrekKarePrefab : TamKarePrefab;
-
-                    // Envanterde bu taş için yer var mı?
+                    GameObject geriGelen = enUst.name.ToLower().Contains("ceyrek") ? CeyrekKarePrefab : TamKarePrefab;
                     if (envanter.KareAlabilirmi(geriGelen))
                     {
                         envanter.KareEkle(geriGelen);
-                        hayalet.HayaletiGuncelle(envanter.SuankiKarePrefabi);
-                        Destroy(enUsttekiTas);
-                    }
-                    else
-                    {
-                        Debug.Log("Bu taş için slot dolu!");
+                        Destroy(enUst);
+                        if (envanter.SuankiKarePrefabi != null) hayalet.HayaletiGuncelle(envanter.SuankiKarePrefabi);
                     }
                 }
             }
@@ -114,129 +108,46 @@ public class KaldirimSistemi : MonoBehaviour
         else { hayalet.HayaletiGoster(false); }
     }
 
-    // AGRESİF MIKNATIS: Önce En Yakın Kenarı Bulur ve Oraya Kilitler
-    Vector3 AgresifSnapHesapla(Vector3 hamPos)
+    void EldekiModeliGuncelle()
     {
-        if (envanter.SuankiKarePrefabi == null) return hamPos;
+        GameObject suankiPrefab = envanter.SuankiKarePrefabi;
 
-        Vector3 snapPos = hamPos;
-        float myX = envanter.SuankiKarePrefabi.transform.localScale.x;
-        float myZ = envanter.SuankiKarePrefabi.transform.localScale.z;
-
-        // Çevredeki en yakın taşı bulmak için tarama yapıyoruz
-        Collider[] komsular = Physics.OverlapSphere(hamPos, 1.4f);
-        foreach (var komsu in komsular)
+        // Eğer eldeki model ile envanterdeki taş uyuşmuyorsa (veya el boşsa)
+        if (eldekiModel == null || (suankiPrefab != null && eldekiModel.name != suankiPrefab.name + "(Clone)"))
         {
-            if (komsu.CompareTag("Tas"))
+            if (eldekiModel != null) Destroy(eldekiModel);
+
+            if (suankiPrefab != null)
             {
-                Vector3 kPos = komsu.transform.position;
-                Vector3 kScl = komsu.transform.localScale;
+                // Taşı karakterin eline (elPozisyonu) oluştur
+                eldekiModel = Instantiate(suankiPrefab, elPozisyonu);
+                eldekiModel.transform.localPosition = Vector3.zero;
+                eldekiModel.transform.localRotation = Quaternion.identity;
 
-                float mesafeX = (myX + kScl.x) / 2.0f;
-                float mesafeZ = (myZ + kScl.z) / 2.0f;
+                // Eldeki taşın etrafa çarpıp karakteri uçurmaması için collider'ı kapat
+                if (eldekiModel.TryGetComponent(out Collider c)) c.enabled = false;
 
-                float diffX = hamPos.x - kPos.x;
-                float diffZ = hamPos.z - kPos.z;
-
-                // MIKNATIS MANTIĞI: Eğer kenara MiknatisEsigi kadar yakınsak oraya yapıştır
-                // Aynı zamanda taşın içine girmeye çalışılıyorsa dışarı it (Penetration Resolution)
-                if (Mathf.Abs(Mathf.Abs(diffX) - mesafeX) < MiknatisEsigi || (Mathf.Abs(diffX) < mesafeX && Mathf.Abs(diffZ) < mesafeZ))
-                {
-                    if (Mathf.Abs(diffX) / mesafeX > Mathf.Abs(diffZ) / mesafeZ)
-                        snapPos.x = kPos.x + (diffX > 0 ? mesafeX : -mesafeX);
-                }
-
-                if (Mathf.Abs(Mathf.Abs(diffZ) - mesafeZ) < MiknatisEsigi || (Mathf.Abs(diffX) < mesafeX && Mathf.Abs(diffZ) < mesafeZ))
-                {
-                    if (Mathf.Abs(diffZ) / mesafeZ >= Mathf.Abs(diffX) / mesafeX)
-                        snapPos.z = kPos.z + (diffZ > 0 ? mesafeZ : -mesafeZ);
-                }
+                // Eldeki taşın hayalet (transparan) görünmemesi için katmanını düzelt
+                eldekiModel.layer = LayerMask.NameToLayer("Default");
             }
         }
-        return snapPos;
+        else if (suankiPrefab == null && eldekiModel != null)
+        {
+            // Envanter bittiyse eldekini sil
+            Destroy(eldekiModel);
+        }
     }
 
-    bool YerlestirmeUygunmu(Vector3 pos, Quaternion rot, float suankiY, float h)
+    float ZeminYuksekliginiHesapla(Vector3 pos, float sizeX, float sizeZ)
     {
-        if (envanter.SuankiKarePrefabi == null) return false;
-
-        // YÜKSEKLİK KONTROLÜ: 
-        // Eğer taşın yüksekliği, (Maksimum Kat * Taş Boyu) değerini aşıyorsa izin verme.
-        // Shift basılıysa bu kuralı görmezden gel.
-        if (!Input.GetKey(KeyCode.LeftShift) && suankiY > (MaxKatSayisi * h + (h / 2f)))
-        {
-            return false;
-        }
-
-        // ÇAKIŞMA KONTROLÜ:
-        // Taşın yerleşeceği kutuyu %10 daraltıyoruz ki yan yana duran taşlar birbirini engellemesin.
-        Vector3 kBoyut = (envanter.SuankiKarePrefabi.transform.localScale / 2) * 0.90f;
-        Collider[] hits = Physics.OverlapBox(pos, kBoyut, rot);
-
-        foreach (var c in hits)
-        {
-            // Eğer çarptığımız obje bir "Tas" ise ve bizimle hemen hemen aynı yükseklikteyse (iç içe geçme durumu)
-            if (c.CompareTag("Tas") && Mathf.Abs(c.transform.position.y - pos.y) < (h * 0.5f))
-                return false;
-        }
-
-        return true;
-    }
-
-    bool KutuKontrol(RaycastHit hit)
-    {
-        string tag = hit.collider.tag;
-        // Etiket kontrolünü daha temiz yapalım
-        bool tamKutu = tag == "tamkaretaskaynakkutusu";
-        bool ceyrekKutu = tag == "ceyrekkaretaskaynakkutusu";
-
-        if (tamKutu || ceyrekKutu || tag == "KaynakKutusu")
-        {
-            hayalet.HayaletiGoster(false);
-            GameObject secilen = (ceyrekKutu || tag.ToLower().Contains("ceyrek")) ? CeyrekKarePrefab : TamKarePrefab;
-
-            // GetKeyDown kullanarak tek bir karede sadece 1 kez çalışmasını sağlıyoruz
-            if (Input.GetKeyDown(KeyCode.E))
-            {
-                if (envanter.KareAlabilirmi(secilen))
-                {
-                    envanter.KareEkle(secilen);
-                    // Envanterdeki güncel prefabı hayalete gönder
-                    if (envanter.SuankiKarePrefabi != null)
-                        hayalet.HayaletiGuncelle(envanter.SuankiKarePrefabi);
-                }
-            }
-            return true;
-        }
-        return false;
-    }
-
-    /*int KatSayisiniHesapla(float x, float z)
-    {
-        int s = 0;
-        foreach (var c in Physics.OverlapBox(new Vector3(x, 5f, z), new Vector3(0.01f, 10f, 0.01f), Quaternion.identity))
-            if (c.CompareTag("Tas")) s++;
-        return s;
-    }*/
-
-    float ZeminYuksekliginiHesapla(Vector3 kontrolPos, float kareH)
-    {
-        // Kontrol kutusunu yerleştirilecek taşın boyutuna göre ayarlıyoruz (hafif daraltılmış)
-        Vector3 kutuBoyutu = new Vector3(0.4f, 10f, 0.4f);
-        Collider[] altindakiTaslar = Physics.OverlapBox(new Vector3(kontrolPos.x, 10f, kontrolPos.z), kutuBoyutu);
-
         float enYuksekY = 0f;
-
+        Collider[] altindakiTaslar = Physics.OverlapBox(new Vector3(pos.x, 10f, pos.z), new Vector3(sizeX * 0.45f, 10f, sizeZ * 0.45f));
         foreach (var c in altindakiTaslar)
         {
             if (c.CompareTag("Tas"))
             {
-                // Taşın en üst noktasını bul (merkez Y + boyutu/2)
-                float tasUstNoktasi = c.transform.position.y + (c.transform.localScale.y / 2f);
-                if (tasUstNoktasi > enYuksekY)
-                {
-                    enYuksekY = tasUstNoktasi;
-                }
+                float ust = c.transform.position.y + (c.transform.localScale.y / 2f);
+                if (ust > enYuksekY) enYuksekY = ust;
             }
         }
         return enYuksekY;
@@ -246,24 +157,56 @@ public class KaldirimSistemi : MonoBehaviour
     {
         GameObject bulunanEnUst = null;
         float maxYukseklik = -100f;
-
-        // Belirtilen X ve Z koordinatında dikey bir sütun boyunca tüm taşları tara
-        // OverlapBox ile o koordinattaki tüm objeleri alıyoruz
-        Collider[] sütundakiObjeler = Physics.OverlapBox(new Vector3(x, 50f, z), new Vector3(0.1f, 100f, 0.1f));
-
-        foreach (var c in sütundakiObjeler)
+        // Dikey sütun taraması (0.2f genişlik ile hassas odaklama)
+        Collider[] sutun = Physics.OverlapBox(new Vector3(x, 25f, z), new Vector3(0.2f, 25f, 0.2f));
+        foreach (var c in sutun)
         {
             if (c.CompareTag("Tas"))
             {
-                if (c.transform.position.y > maxYukseklik)
+                float ust = c.transform.position.y + (c.transform.localScale.y / 2f);
+                if (ust > maxYukseklik)
                 {
-                    maxYukseklik = c.transform.position.y;
+                    maxYukseklik = ust;
                     bulunanEnUst = c.gameObject;
                 }
             }
         }
         return bulunanEnUst;
     }
+
+    // Diğer fonksiyonların (DonmeHesapla, YerlestirmeUygunmu, KutuKontrol, AgresifSnapHesapla) 
+    // mevcuttaki halleri bu yapıyla uyumludur, değiştirmene gerek yok.
+
+    bool YerlestirmeUygunmu(Vector3 pos, Quaternion rot, float suankiY, float h)
+    {
+        if (envanter.SuankiKarePrefabi == null) return false;
+        if (!Input.GetKey(KeyCode.LeftShift) && suankiY > (MaxKatSayisi * h + (h / 2f))) return false;
+
+        Vector3 kBoyut = (envanter.SuankiKarePrefabi.transform.localScale / 2) * 0.90f;
+        Collider[] hits = Physics.OverlapBox(pos, kBoyut, rot);
+        foreach (var c in hits)
+            if (c.CompareTag("Tas") && Mathf.Abs(c.transform.position.y - pos.y) < (h * 0.5f)) return false;
+
+        return true;
+    }
+
+    bool KutuKontrol(RaycastHit hit)
+    {
+        string tag = hit.collider.tag;
+        if (tag == "tamkaretaskaynakkutusu" || tag == "ceyrekkaretaskaynakkutusu" || tag == "KaynakKutusu")
+        {
+            hayalet.HayaletiGoster(false);
+            GameObject secilen = tag.ToLower().Contains("ceyrek") ? CeyrekKarePrefab : TamKarePrefab;
+            if (Input.GetKeyDown(KeyCode.E) && envanter.KareAlabilirmi(secilen))
+            {
+                envanter.KareEkle(secilen);
+                hayalet.HayaletiGuncelle(envanter.SuankiKarePrefabi);
+            }
+            return true;
+        }
+        return false;
+    }
+
     Quaternion DonmeHesapla()
     {
         if (Input.GetKey(KeyCode.LeftShift))
@@ -273,5 +216,34 @@ public class KaldirimSistemi : MonoBehaviour
         }
         suankiDonmeY = 0f;
         return Quaternion.identity;
+    }
+
+    Vector3 AgresifSnapHesapla(Vector3 hamPos)
+    {
+        if (envanter.SuankiKarePrefabi == null) return hamPos;
+        Vector3 snapPos = hamPos;
+        float myX = envanter.SuankiKarePrefabi.transform.localScale.x;
+        float myZ = envanter.SuankiKarePrefabi.transform.localScale.z;
+
+        Collider[] komsular = Physics.OverlapSphere(hamPos, 1.4f);
+        foreach (var komsu in komsular)
+        {
+            if (komsu.CompareTag("Tas"))
+            {
+                Vector3 kPos = komsu.transform.position;
+                Vector3 kScl = komsu.transform.localScale;
+                float mX = (myX + kScl.x) / 2f;
+                float mZ = (myZ + kScl.z) / 2f;
+                float dX = hamPos.x - kPos.x;
+                float dZ = hamPos.z - kPos.z;
+
+                if (Mathf.Abs(Mathf.Abs(dX) - mX) < MiknatisEsigi || (Mathf.Abs(dX) < mX && Mathf.Abs(dZ) < mZ))
+                    if (Mathf.Abs(dX) / mX > Mathf.Abs(dZ) / mZ) snapPos.x = kPos.x + (dX > 0 ? mX : -mX);
+
+                if (Mathf.Abs(Mathf.Abs(dZ) - mZ) < MiknatisEsigi || (Mathf.Abs(dX) < mX && Mathf.Abs(dZ) < mZ))
+                    if (Mathf.Abs(dZ) / mZ >= Mathf.Abs(dX) / mX) snapPos.z = kPos.z + (dZ > 0 ? mZ : -mZ);
+            }
+        }
+        return snapPos;
     }
 }
