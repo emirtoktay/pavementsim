@@ -168,14 +168,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UIYonetici
   envanter: {fileID: 167100342}
+  tasGorselListesi:
+  - tasPrefab: {fileID: 3949260452317818920, guid: 8fedf80234c5c2741ac8c466a8a28707, type: 3}
+    tasSprite: {fileID: 21300000, guid: 9620c9a48a3a55d4792015c78d7cee5b, type: 3}
+  - tasPrefab: {fileID: 3421496114398783582, guid: 441f0060e737c7841a608f7ec2760bae, type: 3}
+    tasSprite: {fileID: 21300000, guid: 883a3f78785a4554bb4d71374c2f94a1, type: 3}
+  - tasPrefab: {fileID: 4475900777909017859, guid: 444e9f5008105d44dbf4018456de09fd, type: 3}
+    tasSprite: {fileID: 21300000, guid: 883a3f78785a4554bb4d71374c2f94a1, type: 3}
   slot1Resim: {fileID: 1558063227}
   slot1Miktar: {fileID: 1203665858}
   slot1Cerceve: {fileID: 2104798977}
   slot2Resim: {fileID: 1568194688}
   slot2Miktar: {fileID: 1311673286}
   slot2Cerceve: {fileID: 2106050210}
-  tamKareSprite: {fileID: 21300000, guid: 883a3f78785a4554bb4d71374c2f94a1, type: 3}
-  ceyrekKareSprite: {fileID: 21300000, guid: 9620c9a48a3a55d4792015c78d7cee5b, type: 3}
 --- !u!1 &167100340
 GameObject:
   m_ObjectHideFlags: 0
@@ -1819,10 +1824,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KesmeMasasi
   tarifler:
-  - tarifAdi: tamdanceyrege
+  - tarifAdi: tamdanyarim
     girisPrefabi: {fileID: 3421496114398783582, guid: 441f0060e737c7841a608f7ec2760bae, type: 3}
-    cikisPrefabi: {fileID: 3949260452317818920, guid: 8fedf80234c5c2741ac8c466a8a28707, type: 3}
-    cikisMiktari: 4
+    cikisPrefabi: {fileID: 4475900777909017859, guid: 444e9f5008105d44dbf4018456de09fd, type: 3}
+    cikisMiktari: 2
     girisSprite: {fileID: 21300000, guid: 883a3f78785a4554bb4d71374c2f94a1, type: 3}
     cikisSprite: {fileID: 21300000, guid: 9620c9a48a3a55d4792015c78d7cee5b, type: 3}
   menuPaneli: {fileID: 559444775}
