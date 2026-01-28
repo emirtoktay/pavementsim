@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 8366054386559322036}
   m_Layer: 0
   m_Name: YarimKarePrefab
-  m_TagString: Untagged
+  m_TagString: Tas
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

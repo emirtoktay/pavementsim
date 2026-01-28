@@ -260,9 +260,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c150c47e4879eb041a333e75cde467c6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KaldirimSistemi
+  tasListesi:
+  - tasAdi: TamKareTas
+    tasPrefabi: {fileID: 3421496114398783582, guid: 441f0060e737c7841a608f7ec2760bae, type: 3}
+  - tasAdi: CeyrekKareTas
+    tasPrefabi: {fileID: 3949260452317818920, guid: 8fedf80234c5c2741ac8c466a8a28707, type: 3}
+  - tasAdi: YarimKareTas
+    tasPrefabi: {fileID: 4475900777909017859, guid: 444e9f5008105d44dbf4018456de09fd, type: 3}
   elPozisyonu: {fileID: 2043796006}
-  TamKarePrefab: {fileID: 3421496114398783582, guid: 441f0060e737c7841a608f7ec2760bae, type: 3}
-  CeyrekKarePrefab: {fileID: 3949260452317818920, guid: 8fedf80234c5c2741ac8c466a8a28707, type: 3}
   YerlestirmeMenzili: 8
   DonmeHassasiyeti: 15
   MaxKatSayisi: 6
