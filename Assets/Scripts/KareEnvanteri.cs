@@ -76,6 +76,38 @@ public class KareEnvanteri : MonoBehaviour
         // KareAlabilirmi kontrolünde takılacağı için işlem yapmaz.
     }
 
+
+    public bool OtomatikEkle(GameObject gelenPrefab)
+{
+    if (gelenPrefab == null) return false;
+
+    // 1. ÖNCELİK: Aynı taştan var mı? Varsa üstüne ekleyelim (Stackleme)
+    for (int i = 0; i < slotlar.Length; i++)
+    {
+        // Slot boş değilse VE ismi aynıysa VE kapasite dolmamışsa
+        if (slotlar[i].prefab != null && 
+            slotlar[i].prefab.name == gelenPrefab.name && 
+            slotlar[i].miktar < MaxSlotKapasitesi)
+        {
+            slotlar[i].miktar++;
+            return true; // Başarıyla ekledi, çık.
+        }
+    }
+
+    // 2. ÖNCELİK: Aynı taştan yoksa veya doluydu, o zaman BOŞ slot ara
+    for (int i = 0; i < slotlar.Length; i++)
+    {
+        if (slotlar[i].prefab == null) // Ahan da boş yer!
+        {
+            slotlar[i].prefab = gelenPrefab;
+            slotlar[i].miktar = 1;
+            return true; // Başarıyla ekledi, çık.
+        }
+    }
+
+    // Buraya kadar geldiyse ne aynı taşta yer var ne de boş slot var.
+    return false; // Envanter FULL demek.
+}
     /// <summary>
     /// Aktif slottaki taşı kullanır ve biterse slotu temizler.
     /// </summary>

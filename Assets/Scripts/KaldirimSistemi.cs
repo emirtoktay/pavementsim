@@ -38,14 +38,34 @@ public class KaldirimSistemi : MonoBehaviour
 
     void Update()
     {
+        // Eğer Time.timeScale 0 ise (Menü açıkken öyle yapmıştık) kodun devamını çalıştırma.
+        if (Time.timeScale == 0) return;
 
         Ray ray = Camera.main.ScreenPointToRay(new Vector3(Screen.width / 2, Screen.height / 2, 0));
 
         // ELDEKİ MODELİ GÜNCELLE
         EldekiModeliGuncelle();
+        // Update içindeki Raycast'in hemen altında:
 
         if (Physics.Raycast(ray, out RaycastHit hit, YerlestirmeMenzili))
         {
+            // MASAYA BAKIYORSAK:
+            if (hit.collider.CompareTag("KesmeMasasi"))
+            {
+                // Hayaleti hemen gizle ki masanın içindeyken görünmesin
+                hayalet.HayaletiGoster(false);
+
+                // Eğer menü açık değilse E ile aç
+                if (Input.GetKeyDown(KeyCode.E))
+                {
+                    hit.collider.GetComponent<KesmeMasasi>().MenuyuAc();
+                }
+
+                // ÖNEMLİ: Eğer masaya bakıyorsak, Sol Tık yapılsa bile aşağıya geçmesin.
+                // Mevcut kodunda return var ama hayaleti gizlemediğin için kafa karıştırıyor olabilir.
+                return;
+            }
+            
             if (KutuKontrol(hit)) return;
 
             // 1. BOYUTLARI AL (Dinamik Hizalama İçin)
