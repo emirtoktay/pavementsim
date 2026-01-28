@@ -1,38 +1,29 @@
 using UnityEngine;
+using UnityEngine.EventSystems; // Bu kütüphane UI olayları için şarttır
 
-public class InventoryItem : MonoBehaviour
+public class InventoryItem : MonoBehaviour, IPointerClickHandler // Tıklama özelliğini ekledik
 {
-    // Inspector'dan her slot için bunu elle gireceğiz (0, 1, 2...)
     public int slotIndex; 
-
     private KesmeMasasi masa;
 
     void Start() {
+        // Sahnedeki masayı bulur
         masa = Object.FindAnyObjectByType<KesmeMasasi>();
     }
 
-    void Update()
+    // UPDATE FONKSİYONUNU TAMAMEN SİLDİK
+    // Unity bu fonksiyonu tıklandığında otomatik olarak SADECE BİR KEZ çağırır.
+    public void OnPointerClick(PointerEventData eventData)
     {
-        // Menü açıkken ve fare üzerindeyken
-        if (masa != null && masa.menuPaneli.activeSelf && Time.timeScale == 0)
+        // Sadece SOL tık yapıldıysa ve menü açıksa
+        if (eventData.button == PointerEventData.InputButton.Left)
         {
-            if (Input.GetMouseButtonDown(0)) // Sol tık
+            if (masa != null && masa.menuPaneli.activeSelf)
             {
-                if (IsMouseOverMe())
-                {
-                    // ARTIK HANGİ SLOT OLDUĞUMUZU DA GÖNDERİYORUZ
-                    masa.TasEkle(slotIndex); 
-                    Debug.Log("Tıklanan Slot Index: " + slotIndex);
-                }
+                // Masaya sadece 1 adet taş ekler
+                masa.TasEkle(slotIndex); 
+                Debug.Log("Sadece 1 tık algılandı. Slot: " + slotIndex);
             }
         }
-    }
-
-    bool IsMouseOverMe()
-    {
-        return RectTransformUtility.RectangleContainsScreenPoint(
-            GetComponent<RectTransform>(), 
-            Input.mousePosition, 
-            null);
     }
 }
