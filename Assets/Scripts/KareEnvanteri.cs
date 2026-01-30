@@ -1,4 +1,97 @@
-using System.Collections.Generic;
+using UnityEngine;
+
+public class KareEnvanteri : MonoBehaviour
+{
+    [System.Serializable]
+    public class Slot
+    {
+        public GameObject prefab;
+        public int miktar;
+    }
+
+    [Header("Envanter")]
+    public Slot[] slotlar = new Slot[2]; 
+    public int aktifSlotIndex = 0;
+
+    // Tek satırlık pratik erişimler
+    public GameObject SuankiKarePrefabi => slotlar[aktifSlotIndex].prefab;
+    public int SuankiMiktar => slotlar[aktifSlotIndex].miktar;
+
+    // Kapasiteyi doğrudan objeden alan, yoksa 1 döndüren (hata önleyici) fonksiyon
+    private int KapasiteGetir(GameObject prefab)
+    {
+        return (prefab != null && prefab.TryGetComponent(out TasVerisi v)) ? v.maksimumKapasite : 1;
+    }
+
+    void Update()
+    {
+        // Tuşlarla seçim
+        if (Input.GetKeyDown(KeyCode.Alpha1)) aktifSlotIndex = 0;
+        if (Input.GetKeyDown(KeyCode.Alpha2)) aktifSlotIndex = 1;
+
+        // Mouse tekerleği ile döngüsel seçim
+        float scroll = Input.GetAxis("Mouse ScrollWheel");
+        if (scroll != 0)
+        {
+            aktifSlotIndex = (scroll > 0) ? (aktifSlotIndex + 1) % slotlar.Length : 
+                             (aktifSlotIndex == 0 ? slotlar.Length - 1 : aktifSlotIndex - 1);
+        }
+    }
+
+    public bool KareAlabilirmi(GameObject prefab)
+    {
+        if (prefab == null) return false;
+        Slot s = slotlar[aktifSlotIndex];
+        
+        // Slot boşsa veya aynı taşta yer varsa alabilir
+        return s.prefab == null || (s.prefab.name == prefab.name && s.miktar < KapasiteGetir(prefab));
+    }
+
+    public void KareEkle(GameObject prefab)
+    {
+        if (!KareAlabilirmi(prefab)) return;
+
+        if (slotlar[aktifSlotIndex].prefab == null) slotlar[aktifSlotIndex].prefab = prefab;
+        slotlar[aktifSlotIndex].miktar++;
+    }
+
+    public bool OtomatikEkle(GameObject prefab)
+    {
+        if (prefab == null) return false;
+        int max = KapasiteGetir(prefab);
+
+        // 1. Önce var olanların üstüne eklemeyi dene
+        foreach (var s in slotlar)
+        {
+            if (s.prefab != null && s.prefab.name == prefab.name && s.miktar < max)
+            {
+                s.miktar++;
+                return true;
+            }
+        }
+
+        // 2. Boş yer varsa oraya koy
+        foreach (var s in slotlar)
+        {
+            if (s.prefab == null)
+            {
+                s.prefab = prefab;
+                s.miktar = 1;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public void KareKullan()
+    {
+        if (slotlar[aktifSlotIndex].miktar > 0)
+        {
+            if (--slotlar[aktifSlotIndex].miktar <= 0) slotlar[aktifSlotIndex].prefab = null;
+        }
+    }
+}
+/*using System.Collections.Generic;
 using UnityEngine;
 
 public class KareEnvanteri : MonoBehaviour
@@ -124,7 +217,7 @@ public class KareEnvanteri : MonoBehaviour
             }
         }
     }
-}
+}*/
 /*using System.Collections.Generic;
 using UnityEngine;
 
