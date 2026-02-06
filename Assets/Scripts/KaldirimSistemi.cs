@@ -248,7 +248,7 @@ public class KaldirimSistemi : MonoBehaviour
     {
         if (Input.GetKeyDown(DonmeTusu))
         {
-            suankiDonmeY += 45f;
+            suankiDonmeY += 90f;
             if (suankiDonmeY >= 360f) suankiDonmeY -= 360f;
         }
         return Quaternion.Euler(0, suankiDonmeY, 0);
